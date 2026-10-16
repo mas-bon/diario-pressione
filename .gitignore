@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Build output (published on gh-pages branch)
+dist/
+
+# Local archives & temp files
+pressione-antigravity.tar.gz.html
+Diario-Pressione-Pubblicabile.zip
+.idx/
+*.log
+.DS_Store
+Thumbs.db

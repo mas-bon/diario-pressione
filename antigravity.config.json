@@ -1,0 +1,45 @@
+{
+  "$schema": "https://antigravity.google.com/schemas/project-v1.json",
+  "name": "Diario della Pressione Arteriosa",
+  "id": "pressione-diario",
+  "version": "1.0.0",
+  "description": "Smart Blood Pressure Diary PWA with individual local storage, clinical ESC/ESH guidelines, interactive Chart.js analytics, and full iPhone/iOS compatibility.",
+  "type": "web-application",
+  "category": "healthcare",
+  "framework": "react",
+  "bundler": "vite",
+  "language": "typescript",
+  "styling": "tailwindcss",
+  "runtime": {
+    "node": ">=20.0.0",
+    "recommended": "22.x"
+  },
+  "scripts": {
+    "dev": "vite --port=3000 --host=0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "tsc --noEmit"
+  },
+  "devServer": {
+    "port": 3000,
+    "host": "0.0.0.0",
+    "open": true
+  },
+  "agent": {
+    "model": "antigravity-preview-09-2026",
+    "environment": "remote",
+    "context": {
+      "clinicalStandard": "ESC/ESH (European Society of Cardiology / European Society of Hypertension)",
+      "dataPolicy": "100% individual local on-device persistence (privacy by design)",
+      "supportedDevices": ["iPhone (Safari PWA)", "iPad", "Android", "Desktop browsers"]
+    }
+  },
+  "features": [
+    "PWA installable on iOS and Desktop",
+    "Offline-first with localStorage fallback",
+    "Chart.js clinical trend, scatter and time-of-day charts",
+    "XLSX and CSV import/export",
+    "Medical doctor report with printable format",
+    "Two-tap confirmation for safe deletions"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Pressione – Diario della Pressione Arteriosa",
+  "description": "Diario smart della pressione arteriosa con sincronizzazione in tempo reale, ottimizzato per iPhone e desktop, grafici clinici ESC/ESH ed esportazione dati.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

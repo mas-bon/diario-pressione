@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg: #f0f5fc;
+    --card: #ffffff;
+    --ink: #0f172a;
+    --mut: #64748b;
+    --line: #dbe6f5;
+    --sys: #e11d48;
+    --dia: #2563eb;
+    --bpm: #0284c7;
+    --c0: #0284c7;
+    --c1: #2563eb;
+    --c2: #f59e0b;
+    --c3: #f97316;
+    --c4: #ef4444;
+    --c5: #b91c1c;
+    --hero: #0a192f;
+  }
+
+  .dark {
+    --bg: #0a1120;
+    --card: #0f1d36;
+    --ink: #f1f5f9;
+    --mut: #94a3b8;
+    --line: #1e2f4d;
+    --sys: #fb7185;
+    --dia: #60a5fa;
+    --bpm: #38bdf8;
+    --hero: #081324;
+  }
+
+  html {
+    font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+    scroll-padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--ink);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* iOS Safari native date & time picker border containment fix */
+  input[type="datetime-local"],
+  input[type="date"],
+  input[type="time"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  input[type="datetime-local"]::-webkit-date-and-time-value {
+    text-align: left;
+    min-height: 1.25em;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.font-display {
+  font-family: "Bricolage Grotesque", "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+@keyframes ecg-pulse {
+  0% {
+    stroke-dashoffset: 900;
+  }
+  50%, 100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-ecg {
+  stroke-dasharray: 900;
+  stroke-dashoffset: 900;
+  animation: ecg-pulse 4.5s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ecg {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* iOS Safe areas */
+.safe-top {
+  padding-top: max(16px, calc(env(safe-area-inset-top, 0px) + 6px));
+}
+
+.safe-bottom {
+  padding-bottom: max(20px, calc(env(safe-area-inset-bottom, 0px) + 8px));
+}
+
+@media print {
+  html,
+  body {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+
