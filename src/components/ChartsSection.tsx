@@ -62,7 +62,7 @@ export function ChartsSection({ readings, isDark: isDarkProp }: ChartsSectionPro
     const lineColor = isDark ? '#1c2e46' : '#d8e2ee';
     const sysColor = isDark ? '#fb7185' : '#e11d48';
     const diaColor = isDark ? '#60a5fa' : '#2563eb';
-    const bpmColor = isDark ? '#38bdf8' : '#0284c7';
+    const bpmColor = isDark ? '#fbbf24' : '#d97706';
     const cardColor = isDark ? '#0f1b2d' : '#ffffff';
 
     ChartJS.defaults.color = mutColor;
