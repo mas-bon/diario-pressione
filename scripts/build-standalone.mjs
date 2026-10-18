@@ -4,11 +4,12 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
-const distDir = path.join(rootDir, 'dist');
+const distDir = path.join(rootDir, 'dist-standalone');
+const outputDistDir = path.join(rootDir, 'dist');
 
 const indexHtmlPath = path.join(distDir, 'index.html');
 if (!fs.existsSync(indexHtmlPath)) {
-  console.error('Errore: dist/index.html non trovato. Esegui prima `vite build`.');
+  console.error('Errore: dist-standalone/index.html non trovato. Esegui `npm run build:standalone`.');
   process.exit(1);
 }
 
@@ -98,8 +99,9 @@ html = html.replace(/<div id=["']root["']><\/div>/i, () => iosQuickLookFallback)
 html = html.replace(/<\/body>/i, () => `${inlinedScriptTag}\n</body>`);
 
 const standaloneOutputRoot = path.join(rootDir, 'Diario-Pressione-Standalone.html');
-const standaloneOutputDist = path.join(distDir, 'Diario-Pressione-Standalone.html');
+const standaloneOutputDist = path.join(outputDistDir, 'Diario-Pressione-Standalone.html');
 
+fs.mkdirSync(outputDistDir, { recursive: true });
 fs.writeFileSync(standaloneOutputRoot, html, 'utf-8');
 fs.writeFileSync(standaloneOutputDist, html, 'utf-8');
 

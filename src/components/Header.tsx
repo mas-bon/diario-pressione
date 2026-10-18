@@ -182,8 +182,8 @@ export function Header({
                   <span>Esporta CSV</span>
                 </button>
                 <button
-                  onClick={() => {
-                    exportToXlsx(readings);
+                  onClick={async () => {
+                    await exportToXlsx(readings);
                     setShowExportMenu(false);
                     onToast('File Excel esportato!', 'success');
                   }}
