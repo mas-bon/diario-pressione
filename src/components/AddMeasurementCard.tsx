@@ -20,7 +20,20 @@ export function AddMeasurementCard({ onAdd, onToast }: AddMeasurementCardProps) 
   const sysNum = parseFloat(systolic);
   const diaNum = parseFloat(diastolic);
   const hasValidNumbers = !isNaN(sysNum) && !isNaN(diaNum) && sysNum >= 50 && diaNum >= 30;
-  const liveCat = hasValidNumbers ? getCategoryInfo(sysNum, diaNum) : null;
+  const pulseNum = parseFloat(pulse);
+  const sysError = systolic !== '' && (isNaN(sysNum) || sysNum < 50 || sysNum > 300) ? 'Sistolica: 50–300 mmHg' : null;
+  const diaError = diastolic !== '' && (isNaN(diaNum) || diaNum < 30 || diaNum > 200) ? 'Diastolica: 30–200 mmHg' : null;
+  const pulseError = pulse !== '' && (isNaN(pulseNum) || pulseNum < 20 || pulseNum > 250) ? 'Pulsazioni: 20–250 bpm' : null;
+  const gapError =
+    !sysError && !diaError && hasValidNumbers && diaNum >= sysNum
+      ? 'La diastolica deve essere inferiore alla sistolica'
+      : null;
+  const errors = [sysError, diaError, pulseError, gapError].filter(Boolean) as string[];
+  const fieldBorder = (invalid: boolean, focusRing: string) =>
+    invalid
+      ? 'border-rose-500 focus:ring-rose-500'
+      : `border-[#dbe6f5] dark:border-[#1e2f4d] ${focusRing}`;
+  const liveCat = hasValidNumbers && !gapError ? getCategoryInfo(sysNum, diaNum) : null;
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -144,7 +157,7 @@ export function AddMeasurementCard({ onAdd, onToast }: AddMeasurementCardProps) 
                 value={systolic}
                 onChange={(e) => setSystolic(e.target.value)}
                 required
-                className="w-full max-w-full min-w-0 box-border min-h-[44px] px-3 py-2 text-base font-semibold rounded-xl border border-[#dbe6f5] dark:border-[#1e2f4d] bg-[#f0f5fc] dark:bg-[#0a1120] text-[#0f172a] dark:text-[#f1f5f9] focus:outline-none focus:ring-2 focus:ring-rose-500"
+                className={`w-full max-w-full min-w-0 box-border min-h-[44px] px-3 py-2 text-base font-semibold rounded-xl border ${fieldBorder(!!(sysError || gapError), 'focus:ring-rose-500')} bg-[#f0f5fc] dark:bg-[#0a1120] text-[#0f172a] dark:text-[#f1f5f9] focus:outline-none focus:ring-2`}
               />
               <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] uppercase font-bold text-[#64748b] pointer-events-none">
                 SYS
@@ -167,7 +180,7 @@ export function AddMeasurementCard({ onAdd, onToast }: AddMeasurementCardProps) 
                 value={diastolic}
                 onChange={(e) => setDiastolic(e.target.value)}
                 required
-                className="w-full max-w-full min-w-0 box-border min-h-[44px] px-3 py-2 text-base font-semibold rounded-xl border border-[#dbe6f5] dark:border-[#1e2f4d] bg-[#f0f5fc] dark:bg-[#0a1120] text-[#0f172a] dark:text-[#f1f5f9] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`w-full max-w-full min-w-0 box-border min-h-[44px] px-3 py-2 text-base font-semibold rounded-xl border ${fieldBorder(!!(diaError || gapError), 'focus:ring-blue-500')} bg-[#f0f5fc] dark:bg-[#0a1120] text-[#0f172a] dark:text-[#f1f5f9] focus:outline-none focus:ring-2`}
               />
               <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] uppercase font-bold text-[#64748b] pointer-events-none">
                 DIA
@@ -189,7 +202,7 @@ export function AddMeasurementCard({ onAdd, onToast }: AddMeasurementCardProps) 
                 placeholder="—"
                 value={pulse}
                 onChange={(e) => setPulse(e.target.value)}
-                className="w-full max-w-full min-w-0 box-border min-h-[44px] px-3 py-2 text-base font-semibold rounded-xl border border-[#dbe6f5] dark:border-[#1e2f4d] bg-[#f0f5fc] dark:bg-[#0a1120] text-[#0f172a] dark:text-[#f1f5f9] focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className={`w-full max-w-full min-w-0 box-border min-h-[44px] px-3 py-2 text-base font-semibold rounded-xl border ${fieldBorder(!!pulseError, 'focus:ring-sky-500')} bg-[#f0f5fc] dark:bg-[#0a1120] text-[#0f172a] dark:text-[#f1f5f9] focus:outline-none focus:ring-2`}
               />
               <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] uppercase font-bold text-[#64748b] pointer-events-none">
                 BPM
@@ -228,6 +241,12 @@ export function AddMeasurementCard({ onAdd, onToast }: AddMeasurementCardProps) 
             </div>
           </div>
         </div>
+
+        {errors.length > 0 && (
+          <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+            {errors.join(' | ')}
+          </p>
+        )}
 
         {/* Note & Submit */}
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 sm:gap-3 items-end w-full max-w-full">
