@@ -261,38 +261,6 @@ export function DoctorReportModal({ isOpen, onClose, readings, stats, onToast }:
             Documento generato dall'applicazione "Pressione – il tuo diario". I dati si basano su rilevazioni domiciliari con misuratore validato.
           </div>
         </div>
-
-        {/* Bottom Sticky Action Bar for thumb reach on iPhone */}
-        <div className="p-3 sm:px-6 border-t border-[#dbe6f5] dark:border-[#1e2f4d] bg-[#f0f5fc] dark:bg-[#0a1120] flex flex-wrap items-center justify-between gap-2 print:hidden flex-shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3.5 py-2.5 rounded-xl border border-[#dbe6f5] dark:border-[#1e2f4d] bg-[#ffffff] dark:bg-[#0f1d36] text-xs sm:text-sm font-semibold text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white cursor-pointer"
-          >
-            Chiudi
-          </button>
-
-          <div className="flex items-center gap-2 flex-1 sm:flex-none justify-end">
-            <button
-              type="button"
-              onClick={() => handleSavePdf('attachment')}
-              disabled={isGenerating}
-              className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-blue-300 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-xs sm:text-sm font-bold transition-all cursor-pointer disabled:opacity-60"
-            >
-              <Download className="w-4 h-4" />
-              <span>{isGenerating ? '...' : 'Scarica PDF'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer"
-            >
-              <Printer className="w-4 h-4" />
-              <span>Stampa / Condividi</span>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
