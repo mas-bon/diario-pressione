@@ -4,7 +4,8 @@ import path from 'path';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
+  const standalone = mode === 'standalone';
   return {
     base: './',
     plugins: [
@@ -14,7 +15,7 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         injectRegister: 'script-defer',
         devOptions: {
-          enabled: true,
+          enabled: false,
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
@@ -67,6 +68,8 @@ export default defineConfig(() => {
     },
     build: {
       chunkSizeWarningLimit: 1500,
+      // The single-file standalone HTML cannot load extra chunks, so it keeps everything in one bundle
+      rollupOptions: standalone ? { output: { inlineDynamicImports: true } } : {},
     },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',

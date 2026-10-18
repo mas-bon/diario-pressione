@@ -49,7 +49,7 @@
 ## 🔒 Privacy e Sicurezza dei Dati
 
 * **Zero Server, Zero Cloud, Zero Tracciamento**: nessun dato medico viene mai inviato a server esterni.
-* **Archiviazione 100% Locale**: tutte le misurazioni sono salvate esclusivamente nella memoria interna (`localStorage`) del singolo telefono o computer.
+* **Archiviazione 100% Locale**: tutte le misurazioni sono salvate esclusivamente nella memoria interna (`localStorage`) del singolo telefono o computer. I dati restano **solo sul tuo dispositivo**: non vengono mai caricati né sincronizzati online. Esporta regolarmente un backup `.json` per non perderli se cancelli i dati del browser.
 * **Multi-utente indipendente**: se condividi il link dell'app con familiari o amici, ciascuno avrà il proprio diario completamente vuoto, separato e privato sul proprio dispositivo.
 
 ---
@@ -83,6 +83,10 @@ npm run dev
 
 # Compila la build PWA (dist/) + il file singolo Diario-Pressione-Standalone.html
 npm run build
+
+# Esegue lint (tsc) e test (Vitest)
+npm run lint
+npm test
 
 # Avvia il server locale ottimizzato per iPhone con QR Code in console
 npm run iphone

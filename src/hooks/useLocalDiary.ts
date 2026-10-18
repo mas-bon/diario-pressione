@@ -1,12 +1,30 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Reading } from '../types';
 import { safeGetItem, safeSetItem } from '../utils/safeStorage';
+import { mergeReadings, sanitizeReadings } from '../utils/readings';
+
+export { mergeReadings } from '../utils/readings';
 
 const LOCAL_STORAGE_KEY = 'pressione_individual_diary_v1';
 const LEGACY_STORAGE_KEY = 'pa_v1';
 const OFFLINE_CACHE_PREFIX = 'pressione_offline_cache_default';
 
 const INITIAL_SEED_READINGS: Reading[] = [];
+
+function encodeBase64Utf8(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
+function decodeBase64Utf8(b64: string): string {
+  const binary = atob(b64);
+  const bytes = Uint8Array.from(binary, (ch) => ch.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
 
 export function buildCloudMigrationUrl(readings: Reading[]): string {
   const baseUrl = 'https://mas-bon.github.io/diario-pressione/';
@@ -22,47 +40,55 @@ export function buildCloudMigrationUrl(readings: Reading[]): string {
       a: r.arm || 'left',
       o: r.position || 'sitting',
     }));
-    const json = JSON.stringify(compact);
-    const b64 = window.btoa(unescape(encodeURIComponent(json)));
+    const b64 = encodeBase64Utf8(JSON.stringify(compact));
     return `${baseUrl}?migrate=${encodeURIComponent(b64)}`;
   } catch {
     return baseUrl;
   }
 }
 
-function parseMigratedReadingsFromUrl(): Reading[] | null {
-  if (typeof window === 'undefined') return null;
+export function decodeMigratedReadings(b64: string): Reading[] | null {
   try {
-    const params = new URLSearchParams(window.location.search);
-    const b64 = params.get('migrate');
-    if (!b64) return null;
-
-    // Remove <link rel="manifest"> when ?migrate= is present so iOS "Add to Home Screen"
-    // preserves the ?migrate= query parameter in the Home Screen icon's launch URL!
-    const manifestLink = document.querySelector('link[rel="manifest"]');
-    if (manifestLink) {
-      manifestLink.remove();
-    }
-
-    const json = decodeURIComponent(escape(window.atob(b64)));
-    const compact = JSON.parse(json);
+    const compact = JSON.parse(decodeBase64Utf8(b64));
     if (!Array.isArray(compact)) return null;
-
-    return compact.map((item, idx) => ({
-      id: item.i || `mig-${idx}-${Date.now()}`,
-      timestamp: Number(item.t) || Date.now(),
-      systolic: Number(item.s) || 120,
-      diastolic: Number(item.d) || 80,
-      pulse: item.p ? Number(item.p) : null,
-      notes: String(item.n || ''),
-      arm: item.a || 'left',
-      position: item.o || 'sitting',
-      createdAt: Number(item.t) || Date.now(),
-      updatedAt: Number(item.t) || Date.now(),
-    }));
+    return sanitizeReadings(
+      compact.map((item) => ({
+        id: item?.i,
+        timestamp: item?.t,
+        systolic: item?.s,
+        diastolic: item?.d,
+        pulse: item?.p,
+        notes: item?.n,
+        arm: item?.a,
+        position: item?.o,
+      })),
+      'mig'
+    );
   } catch {
     return null;
   }
+}
+
+function parseMigratedReadingsFromUrl(): Reading[] | null {
+  if (typeof window === 'undefined') return null;
+  const b64 = new URLSearchParams(window.location.search).get('migrate');
+  if (!b64) return null;
+
+  // Remove <link rel="manifest"> when ?migrate= is present so iOS "Add to Home Screen"
+  // preserves the ?migrate= query parameter in the Home Screen icon's launch URL!
+  document.querySelector('link[rel="manifest"]')?.remove();
+
+  return decodeMigratedReadings(b64);
+}
+
+export function convertLegacyReadings(items: unknown[]): Reading[] {
+  return sanitizeReadings(
+    items.map((item) => {
+      const it = (item ?? {}) as Record<string, unknown>;
+      return { timestamp: it.ts, systolic: it.s, diastolic: it.d, pulse: it.p, notes: it.n };
+    }),
+    'legacy'
+  );
 }
 
 export function useLocalDiary() {
@@ -70,33 +96,21 @@ export function useLocalDiary() {
     if (typeof window === 'undefined') return INITIAL_SEED_READINGS;
 
     try {
-      const migrated = parseMigratedReadingsFromUrl();
+      const migrated = parseMigratedReadingsFromUrl() ?? [];
 
       // 1. Try local individual diary key
       const localData = safeGetItem(LOCAL_STORAGE_KEY);
       if (localData) {
         const parsed = JSON.parse(localData);
         if (Array.isArray(parsed)) {
-          if (migrated && migrated.length > 0) {
-            const seen = new Set(parsed.map((r: Reading) => `${r.timestamp}|${r.systolic}|${r.diastolic}`));
-            const merged = [...parsed];
-            for (const item of migrated) {
-              const key = `${item.timestamp}|${item.systolic}|${item.diastolic}`;
-              if (!seen.has(key)) {
-                seen.add(key);
-                merged.push(item);
-              }
-            }
-            const sorted = merged.sort((a, b) => a.timestamp - b.timestamp);
-            safeSetItem(LOCAL_STORAGE_KEY, JSON.stringify(sorted));
-            return sorted;
-          }
-          return parsed.sort((a, b) => a.timestamp - b.timestamp);
+          const merged = mergeReadings(sanitizeReadings(parsed, 'local'), migrated);
+          if (migrated.length > 0) safeSetItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+          return merged;
         }
       }
 
-      if (migrated && migrated.length > 0) {
-        const sorted = migrated.sort((a, b) => a.timestamp - b.timestamp);
+      if (migrated.length > 0) {
+        const sorted = mergeReadings(migrated);
         safeSetItem(LOCAL_STORAGE_KEY, JSON.stringify(sorted));
         return sorted;
       }
@@ -106,8 +120,9 @@ export function useLocalDiary() {
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          safeSetItem(LOCAL_STORAGE_KEY, JSON.stringify(parsed));
-          return parsed.sort((a, b) => a.timestamp - b.timestamp);
+          const valid = mergeReadings(sanitizeReadings(parsed, 'cache'));
+          safeSetItem(LOCAL_STORAGE_KEY, JSON.stringify(valid));
+          return valid;
         }
       }
 
@@ -116,20 +131,9 @@ export function useLocalDiary() {
       if (legacy) {
         const parsed = JSON.parse(legacy);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const converted: Reading[] = parsed.map((item, idx) => ({
-            id: `legacy-${idx}`,
-            timestamp: item.ts || Date.now(),
-            systolic: item.s || 120,
-            diastolic: item.d || 80,
-            pulse: item.p || null,
-            notes: item.n || '',
-            arm: 'left',
-            position: 'sitting',
-            createdAt: item.ts || Date.now(),
-            updatedAt: item.ts || Date.now(),
-          }));
+          const converted = mergeReadings(convertLegacyReadings(parsed));
           safeSetItem(LOCAL_STORAGE_KEY, JSON.stringify(converted));
-          return converted.sort((a, b) => a.timestamp - b.timestamp);
+          return converted;
         }
       }
 
@@ -185,23 +189,10 @@ export function useLocalDiary() {
   // Batch import
   const batchImport = useCallback((newReadings: Reading[], replace: boolean) => {
     if (replace) {
-      const sorted = [...newReadings].sort((a, b) => a.timestamp - b.timestamp);
-      setReadings(sorted);
+      setReadings([...newReadings].sort((a, b) => a.timestamp - b.timestamp));
       return;
     }
-
-    setReadings((prev) => {
-      const seen = new Set(prev.map((r) => `${r.timestamp}|${r.systolic}|${r.diastolic}`));
-      const merged = [...prev];
-      for (const item of newReadings) {
-        const key = `${item.timestamp}|${item.systolic}|${item.diastolic}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          merged.push(item);
-        }
-      }
-      return merged.sort((a, b) => a.timestamp - b.timestamp);
-    });
+    setReadings((prev) => mergeReadings(prev, newReadings));
   }, []);
 
   // Clear all readings

@@ -1,6 +1,6 @@
-import * as XLSX from 'xlsx';
 import { Reading } from '../types';
 import { formatDateFull, formatTime, pad, getCategoryInfo } from './bloodPressure';
+import { isValidMeasurement, sanitizeReadings } from './readings';
 
 const MONTH_NAMES = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
 
@@ -157,14 +157,17 @@ export function parseRowsToReadings(rows: unknown[][]): Reading[] {
     const { hours, minutes } = tIdx >= 0 && r[tIdx] != null ? parseTimeCell(r[tIdx]) : { hours: 12, minutes: 0 };
     const dateObj = new Date(dateVal.getFullYear(), dateVal.getMonth(), dateVal.getDate(), hours, minutes);
     const pulseRaw = pIdx >= 0 && r[pIdx] != null ? parseFloat(String(r[pIdx]).replace(',', '.')) : null;
+    const pulse = pulseRaw && pulseRaw > 0 ? Math.round(pulseRaw) : null;
     const notesRaw = nIdx >= 0 && r[nIdx] != null ? String(r[nIdx]).trim() : '';
+
+    if (!isValidMeasurement(Math.round(sysRaw), Math.round(diaRaw), pulse)) return;
 
     result.push({
       id: `imp-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
       timestamp: dateObj.getTime(),
       systolic: Math.round(sysRaw),
       diastolic: Math.round(diaRaw),
-      pulse: pulseRaw && pulseRaw > 0 ? Math.round(pulseRaw) : null,
+      pulse,
       notes: notesRaw,
       arm: 'left',
       position: 'sitting',
@@ -176,34 +179,26 @@ export function parseRowsToReadings(rows: unknown[][]): Reading[] {
   return result.sort((a, b) => a.timestamp - b.timestamp);
 }
 
+export function parseJsonReadings(text: string): Reading[] {
+  const parsed = JSON.parse(text);
+  const items: unknown[] = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.readings) ? parsed.readings : [];
+  const now = Date.now();
+  const normalized = items.map((raw) => {
+    const item = (raw ?? {}) as Record<string, unknown>;
+    return {
+      ...item,
+      systolic: item.systolic ?? item.s,
+      diastolic: item.diastolic ?? item.d,
+      timestamp: item.timestamp ?? item.ts ?? now,
+    };
+  });
+  return sanitizeReadings(normalized, `json-${now}`).sort((a, b) => a.timestamp - b.timestamp);
+}
+
 export async function parseFileToReadings(file: File): Promise<Reading[]> {
   const isJson = /\.json$/i.test(file.name);
   if (isJson) {
-    const text = await file.text();
-    const parsed = JSON.parse(text);
-    const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.readings) ? parsed.readings : [];
-    const valid: Reading[] = [];
-    items.forEach((item: Record<string, unknown>, idx: number) => {
-      const sys = Number(item.systolic ?? item.s);
-      const dia = Number(item.diastolic ?? item.d);
-      const ts = Number(item.timestamp ?? item.ts ?? Date.now());
-      if (!isNaN(sys) && !isNaN(dia) && sys > 0 && dia > 0 && !isNaN(ts)) {
-        valid.push({
-          id: typeof item.id === 'string' ? item.id : `json-${Date.now()}-${idx}`,
-          timestamp: ts,
-          systolic: Math.round(sys),
-          diastolic: Math.round(dia),
-          pulse: item.pulse != null && Number(item.pulse) > 0 ? Math.round(Number(item.pulse)) : null,
-          notes: typeof item.notes === 'string' ? item.notes : '',
-          arm: item.arm === 'right' ? 'right' : 'left',
-          position:
-            item.position === 'lying' || item.position === 'standing' ? item.position : 'sitting',
-          createdAt: Number(item.createdAt) || ts,
-          updatedAt: Date.now(),
-        });
-      }
-    });
-    return valid.sort((a, b) => a.timestamp - b.timestamp);
+    return parseJsonReadings(await file.text());
   }
 
   const isCsv = /\.csv$/i.test(file.name);
@@ -215,6 +210,7 @@ export async function parseFileToReadings(file: File): Promise<Reading[]> {
   }
 
   // Handle .xlsx, .xls
+  const XLSX = await import('xlsx');
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: 'array' });
   const firstSheetName = workbook.SheetNames[0];
@@ -241,8 +237,8 @@ export function exportToCsv(readings: Reading[], filename = 'diario-pressione.cs
   downloadBlob(blob, filename);
 }
 
-export function exportToXlsx(readings: Reading[], filename = 'diario-pressione.xlsx') {
-  const data = readings.map((r) => {
+export function buildXlsxRows(readings: Reading[]) {
+  return readings.map((r) => {
     const cat = getCategoryInfo(r.systolic, r.diastolic);
     return {
       Data: formatDateFull(r.timestamp),
@@ -256,11 +252,18 @@ export function exportToXlsx(readings: Reading[], filename = 'diario-pressione.x
       Note: r.notes || '',
     };
   });
+}
 
-  const worksheet = XLSX.utils.json_to_sheet(data);
+export function buildXlsxBuffer(XLSX: typeof import('xlsx'), readings: Reading[]): ArrayBuffer {
+  const worksheet = XLSX.utils.json_to_sheet(buildXlsxRows(readings));
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Diario Pressione');
-  const xlsxArrayBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+  return XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+}
+
+export async function exportToXlsx(readings: Reading[], filename = 'diario-pressione.xlsx') {
+  const XLSX = await import('xlsx');
+  const xlsxArrayBuffer = buildXlsxBuffer(XLSX, readings);
   const blob = new Blob([xlsxArrayBuffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });

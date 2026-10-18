@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useLocalDiary, buildCloudMigrationUrl } from './hooks/useLocalDiary';
 import { usePwaInstallation } from './hooks/usePwaInstallation';
 import { computeStats } from './utils/bloodPressure';
@@ -9,7 +9,9 @@ import { AddMeasurementCard } from './components/AddMeasurementCard';
 import { PeriodFilterBar } from './components/PeriodFilterBar';
 import { ChartsSection } from './components/ChartsSection';
 import { ReadingsTable } from './components/ReadingsTable';
-import { DoctorReportModal } from './components/DoctorReportModal';
+const DoctorReportModal = lazy(() =>
+  import('./components/DoctorReportModal').then((m) => ({ default: m.DoctorReportModal }))
+);
 import { InstallPwaModal } from './components/InstallPwaModal';
 import { Toast, ToastMessage } from './components/Toast';
 import { parseFileToReadings } from './utils/fileImportExport';
@@ -296,13 +298,17 @@ export default function App() {
       />
 
       {/* Doctor Report Modal */}
-      <DoctorReportModal
-        isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
-        readings={readings}
-        stats={filteredStats}
-        onToast={addToast}
-      />
+      {isReportModalOpen && (
+        <Suspense fallback={null}>
+          <DoctorReportModal
+            isOpen={isReportModalOpen}
+            onClose={() => setIsReportModalOpen(false)}
+            readings={readings}
+            stats={filteredStats}
+            onToast={addToast}
+          />
+        </Suspense>
+      )}
 
       {/* Toast notifications */}
       <Toast toasts={toasts} onDismiss={dismissToast} />
