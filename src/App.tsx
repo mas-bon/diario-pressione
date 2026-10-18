@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useLocalDiary } from './hooks/useLocalDiary';
+import { useLocalDiary, buildCloudMigrationUrl } from './hooks/useLocalDiary';
 import { usePwaInstallation } from './hooks/usePwaInstallation';
 import { computeStats } from './utils/bloodPressure';
 import { TimeRangeFilter } from './types';
@@ -179,6 +179,35 @@ export default function App() {
           onToggleTheme={toggleTheme}
         />
 
+        {/* Banner per slegare l'iPhone dal PC (visibile solo se aperto dall'IP locale http://192.168...) */}
+        {typeof window !== 'undefined' &&
+          window.location.protocol === 'http:' &&
+          /iphone|ipad|ipod/i.test(window.navigator.userAgent) && (
+            <div className="mb-4 p-4 rounded-2xl bg-amber-500/15 border-2 border-amber-500/40 flex flex-col gap-3 text-xs sm:text-sm">
+              <div className="flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm font-bold">
+                  ⚡
+                </div>
+                <div className="text-[#0f172a] dark:text-[#f1f5f9]">
+                  <strong className="block text-sm sm:text-base text-amber-700 dark:text-amber-300">
+                    Stai usando l'icona collegata al Wi-Fi del PC ({window.location.hostname})
+                  </strong>
+                  <span>
+                    Per far funzionare l'app su iPhone <strong>anche a PC spento e fuori casa</strong>, tocca il pulsante qui sotto: trasferirà automaticamente le tue <strong>{readings.length} misurazioni</strong> sulla versione autonoma e ti basterà fare <strong>Condividi (↑) → Aggiungi alla schermata Home</strong>!
+                  </span>
+                </div>
+              </div>
+              <a
+                href={buildCloudMigrationUrl(readings)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-center text-sm shadow-md transition-colors"
+              >
+                📲 Passa alla versione senza PC (trasferisci le tue {readings.length} misurazioni)
+              </a>
+            </div>
+          )}
+
         {/* iPhone install / PWA banner tip (only visible if NOT already installed) */}
         {showPwaTip && !isInstalled && (
           <div className="mb-4 p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-sky-500/10 border border-blue-500/20 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 text-xs sm:text-sm">
@@ -187,7 +216,7 @@ export default function App() {
                 <Smartphone className="w-4 h-4" />
               </div>
               <p className="text-[#0f172a] dark:text-[#f1f5f9]">
-                <strong>Web App installabile:</strong> Puoi installarla direttamente sulla schermata Home del tuo iPhone o computer per usarla a schermo intero come una vera app nativa, con dati sempre privati e salvati in locale!
+                <strong>Web App installabile (funziona anche a PC spento):</strong> Tocca il tasto <strong>Condividi (↑)</strong> di Safari in basso e scegli <strong>"Aggiungi alla schermata Home"</strong> per usarla sempre in autonomia!
               </p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">

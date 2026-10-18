@@ -477,9 +477,9 @@ export async function saveOrSharePdfReport(
 
   const base64 = uint8ArrayToBase64(pdfBytes);
 
-  // 2. If running inside an iOS Home Screen WebClip over HTTP, synchronously submit to port 3001
+  // 2. If running inside an iOS Home Screen WebClip over HTTP (local PC), synchronously submit to port 3001
   // (cross-origin port) so iOS opens the PDF in SFSafariViewController with native Print, Share & Done buttons!
-  if (isIosStandaloneMode()) {
+  if (isIosStandaloneMode() && window.location.protocol === 'http:') {
     submitToExternalSafariPort({
       base64,
       filename,

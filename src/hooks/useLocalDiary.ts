@@ -8,16 +8,97 @@ const OFFLINE_CACHE_PREFIX = 'pressione_offline_cache_default';
 
 const INITIAL_SEED_READINGS: Reading[] = [];
 
+export function buildCloudMigrationUrl(readings: Reading[]): string {
+  const baseUrl = 'https://mas-bon.github.io/diario-pressione/';
+  if (!readings.length) return baseUrl;
+  try {
+    const compact = readings.map((r) => ({
+      i: r.id,
+      t: r.timestamp,
+      s: r.systolic,
+      d: r.diastolic,
+      p: r.pulse,
+      n: r.notes || '',
+      a: r.arm || 'left',
+      o: r.position || 'sitting',
+    }));
+    const json = JSON.stringify(compact);
+    const b64 = window.btoa(unescape(encodeURIComponent(json)));
+    return `${baseUrl}?migrate=${encodeURIComponent(b64)}`;
+  } catch {
+    return baseUrl;
+  }
+}
+
+function parseMigratedReadingsFromUrl(): Reading[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const b64 = params.get('migrate');
+    if (!b64) return null;
+
+    // Remove <link rel="manifest"> when ?migrate= is present so iOS "Add to Home Screen"
+    // preserves the ?migrate= query parameter in the Home Screen icon's launch URL!
+    const manifestLink = document.querySelector('link[rel="manifest"]');
+    if (manifestLink) {
+      manifestLink.remove();
+    }
+
+    const json = decodeURIComponent(escape(window.atob(b64)));
+    const compact = JSON.parse(json);
+    if (!Array.isArray(compact)) return null;
+
+    return compact.map((item, idx) => ({
+      id: item.i || `mig-${idx}-${Date.now()}`,
+      timestamp: Number(item.t) || Date.now(),
+      systolic: Number(item.s) || 120,
+      diastolic: Number(item.d) || 80,
+      pulse: item.p ? Number(item.p) : null,
+      notes: String(item.n || ''),
+      arm: item.a || 'left',
+      position: item.o || 'sitting',
+      createdAt: Number(item.t) || Date.now(),
+      updatedAt: Number(item.t) || Date.now(),
+    }));
+  } catch {
+    return null;
+  }
+}
+
 export function useLocalDiary() {
   const [readings, setReadings] = useState<Reading[]>(() => {
     if (typeof window === 'undefined') return INITIAL_SEED_READINGS;
 
     try {
+      const migrated = parseMigratedReadingsFromUrl();
+
       // 1. Try local individual diary key
       const localData = safeGetItem(LOCAL_STORAGE_KEY);
       if (localData) {
         const parsed = JSON.parse(localData);
-        if (Array.isArray(parsed)) return parsed.sort((a, b) => a.timestamp - b.timestamp);
+        if (Array.isArray(parsed)) {
+          if (migrated && migrated.length > 0) {
+            const seen = new Set(parsed.map((r: Reading) => `${r.timestamp}|${r.systolic}|${r.diastolic}`));
+            const merged = [...parsed];
+            for (const item of migrated) {
+              const key = `${item.timestamp}|${item.systolic}|${item.diastolic}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                merged.push(item);
+              }
+            }
+            const sorted = merged.sort((a, b) => a.timestamp - b.timestamp);
+            safeSetItem(LOCAL_STORAGE_KEY, JSON.stringify(sorted));
+            return sorted;
+          }
+          return parsed.sort((a, b) => a.timestamp - b.timestamp);
+        }
+      }
+
+      if (migrated && migrated.length > 0) {
+        const sorted = migrated.sort((a, b) => a.timestamp - b.timestamp);
+        safeSetItem(LOCAL_STORAGE_KEY, JSON.stringify(sorted));
+        return sorted;
       }
 
       // 2. Try previous cache if user was using previous version

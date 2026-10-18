@@ -298,7 +298,7 @@ async function downloadBlob(blob: Blob, filename: string) {
   }
 
   // 2. On iOS Home Screen Standalone over HTTP, submit to port 3001 so iOS opens SFSafariViewController
-  if (isIOS && isStandalone) {
+  if (isIOS && isStandalone && window.location.protocol === 'http:') {
     const buffer = new Uint8Array(await blob.arrayBuffer());
     let binary = '';
     for (let i = 0; i < buffer.length; i += 0x8000) {
